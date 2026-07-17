@@ -4,8 +4,8 @@
  * Build requirements:
    * JDK 17
    * Gradle 8.7
-   * Android Gradle Plugin 8.5.2
-   * Android SDK Platform 35
+   * Android Gradle Plugin 8.6.1
+   * Android SDK Platform 36
  * Update any source files as needed (current version is: https://github.com/zxing/zxing/releases/tag/BS-4.7.6):
    - Copy all files from `core`
    - From the `android` folder grab the src/.../android folder and paste that to the appropriate package
@@ -20,8 +20,9 @@
  * Commit and push any changes made!
 
 ### Compatibility notes
- * The library now builds against Android SDK 35 and keeps `minSdkVersion 15`.
+ * The library now builds against Android SDK 36 and keeps `minSdkVersion 15`.
  * `CaptureActivity` now requests `CAMERA` permission at runtime on Android 6.0+ before opening the camera.
+ * WPA2-EAP QR configuration remains available on Android 4.3+; older devices keep scanning compatibility and safely skip unsupported enterprise Wi-Fi configuration.
  * If your app declares `com.google.zxing.client.android.CaptureActivity` in its own manifest, add the Android 12+ `android:exported` attribute there as appropriate for your app (typically `false`).
 
 ### The generated .aar is used in:
