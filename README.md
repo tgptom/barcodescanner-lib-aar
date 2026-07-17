@@ -1,6 +1,11 @@
 ### Steps to build a new .aar
  * Clone this repo
- * Open it in Android Studio
+ * Open it in a current Android Studio release
+ * Build requirements:
+   * JDK 17
+   * Gradle 8.7
+   * Android Gradle Plugin 8.5.2
+   * Android SDK Platform 35
  * Update any source files as needed (current version is: https://github.com/zxing/zxing/releases/tag/BS-4.7.6):
    - Copy all files from `core`
    - From the `android` folder grab the src/.../android folder and paste that to the appropriate package
@@ -10,9 +15,14 @@
    - Make sure no `app_name` tag is active in the `res/values*/string.xml` files
  * (Finder/Explorer): Clean barcodescanner > build > outputs
  * Open the Gradle toolwindow
- * Run barcodescanner > Tasks > other > build
- * The (release) .aar will be generated in barcodescanner > build > outputs
+ * Run `:barcodescanner:assembleRelease`
+ * The release `.aar` will be generated in `barcodescanner/build/outputs/aar`
  * Commit and push any changes made!
+
+### Compatibility notes
+ * The library now builds against Android SDK 35 and keeps `minSdkVersion 15`.
+ * `CaptureActivity` now requests `CAMERA` permission at runtime on Android 6.0+ before opening the camera.
+ * If your app declares `com.google.zxing.client.android.CaptureActivity` in its own manifest, add the Android 12+ `android:exported` attribute there as appropriate for your app (typically `false`).
 
 ### The generated .aar is used in:
 * [NativeScript BarcodeScanner Plugin](https://github.com/EddyVerbruggen/nativescript-barcodescanner/)
