@@ -22,6 +22,8 @@ import android.content.SharedPreferences;
 import android.content.res.AssetFileDescriptor;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.os.Build;
+import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.preference.PreferenceManager;
 import android.util.Log;
@@ -70,7 +72,13 @@ final class BeepManager implements MediaPlayer.OnErrorListener, Closeable {
     }
     if (vibrate) {
       Vibrator vibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
-      vibrator.vibrate(VIBRATE_DURATION);
+      if (vibrator != null) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+          vibrator.vibrate(VibrationEffect.createOneShot(VIBRATE_DURATION, VibrationEffect.DEFAULT_AMPLITUDE));
+        } else {
+          vibrator.vibrate(VIBRATE_DURATION);
+        }
+      }
     }
   }
 

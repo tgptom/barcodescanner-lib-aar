@@ -16,13 +16,14 @@
 
 package com.google.zxing.client.android;
 
+import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.pm.FeatureInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.hardware.Camera;
-import android.support.v4.content.LocalBroadcastManager;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.widget.Button;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.DecodeHintType;
@@ -50,6 +51,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -96,6 +98,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
   private static final String[] ZXING_URLS = { "http://zxing.appspot.com/scan", "zxing://scan/" };
 
   private static final int HISTORY_REQUEST_CODE = 0x0000bacc;
+  private static final int CAMERA_PERMISSION_REQUEST_CODE = 0x0000c001;
 
   private static final Collection<ResultMetadataType> DISPLAYABLE_METADATA_TYPES =
       EnumSet.of(ResultMetadataType.ISSUE_NUMBER,
@@ -297,16 +300,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
 
     }
 
-    SurfaceView surfaceView = (SurfaceView) findViewById(R.id.preview_view);
-    SurfaceHolder surfaceHolder = surfaceView.getHolder();
-    if (hasSurface) {
-      // The activity was paused but not stopped, so the surface still exists. Therefore
-      // surfaceCreated() won't be called, so init the camera here.
-      initCamera(surfaceHolder);
-    } else {
-      // Install the callback and wait for surfaceCreated() to init the camera.
-      surfaceHolder.addCallback(this);
-    }
+    maybeStartCameraPreview();
   }
 
   private int getCurrentOrientation() {
@@ -366,6 +360,18 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     inactivityTimer.shutdown();
     LocalBroadcastManager.getInstance(this).unregisterReceiver(stopReceiver);
     super.onDestroy();
+  }
+
+  @Override
+  public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    if (requestCode == CAMERA_PERMISSION_REQUEST_CODE) {
+      if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        maybeStartCameraPreview();
+      } else {
+        displayCameraPermissionDeniedMessageAndExit();
+      }
+    }
   }
 
   @Override
@@ -459,7 +465,9 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     }
     if (!hasSurface) {
       hasSurface = true;
-      initCamera(holder);
+      if (hasCameraPermission()) {
+        initCamera(holder);
+      }
     }
   }
 
@@ -794,10 +802,41 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     }
   }
 
+  private void maybeStartCameraPreview() {
+    if (!hasCameraPermission()) {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        requestPermissions(new String[]{Manifest.permission.CAMERA}, CAMERA_PERMISSION_REQUEST_CODE);
+      }
+      return;
+    }
+
+    SurfaceView surfaceView = (SurfaceView) findViewById(R.id.preview_view);
+    SurfaceHolder surfaceHolder = surfaceView.getHolder();
+    if (hasSurface) {
+      initCamera(surfaceHolder);
+    } else {
+      surfaceHolder.addCallback(this);
+    }
+  }
+
+  private boolean hasCameraPermission() {
+    return Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
+        checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
+  }
+
   private void displayFrameworkBugMessageAndExit() {
     AlertDialog.Builder builder = new AlertDialog.Builder(this);
     builder.setTitle(getString(R.string.app_name));
     builder.setMessage(getString(R.string.msg_camera_framework_bug));
+    builder.setPositiveButton(R.string.button_ok, new FinishListener(this));
+    builder.setOnCancelListener(new FinishListener(this));
+    builder.show();
+  }
+
+  private void displayCameraPermissionDeniedMessageAndExit() {
+    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+    builder.setTitle(getString(R.string.app_name));
+    builder.setMessage(getString(R.string.msg_camera_permission_denied));
     builder.setPositiveButton(R.string.button_ok, new FinishListener(this));
     builder.setOnCancelListener(new FinishListener(this));
     builder.show();
