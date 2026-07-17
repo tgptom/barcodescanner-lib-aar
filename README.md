@@ -3,8 +3,8 @@
  * Open it in a current Android Studio release
  * Build requirements:
    * JDK 17
-   * Gradle 8.7
-   * Android Gradle Plugin 8.6.1
+   * Gradle 8.9
+   * Android Gradle Plugin 8.7.3
    * Android SDK Platform 36
  * Update any source files as needed (current version is: https://github.com/zxing/zxing/releases/tag/BS-4.7.6):
    - Copy all files from `core`
