@@ -18,7 +18,6 @@ package com.google.zxing.client.result;
 
 import com.google.zxing.Result;
 
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -28,6 +27,8 @@ import java.util.regex.Pattern;
  */
 public final class URIResultParser extends ResultParser {
 
+  private static final Pattern ALLOWED_URI_CHARS_PATTERN =
+      Pattern.compile("[-._~:/?#\\[\\]@!$&'()*+,;=%A-Za-z0-9]+");
   // See http://www.ietf.org/rfc/rfc2396.txt
   private static final Pattern URL_WITH_PROTOCOL_PATTERN = Pattern.compile("[a-zA-Z][a-zA-Z0-9+-.]+:");
   private static final Pattern URL_WITHOUT_PROTOCOL_PATTERN = Pattern.compile(
@@ -44,7 +45,64 @@ public final class URIResultParser extends ResultParser {
       return new URIParsedResult(rawText.substring(4).trim(), null);
     }
     rawText = rawText.trim();
-    return isBasicallyValidURI(rawText) ? new URIParsedResult(rawText, null) : null;
+    if (!isBasicallyValidURI(rawText) || isPossiblyMaliciousURI(rawText)) {
+      return null;
+    }
+    return new URIParsedResult(rawText, null);
+  }
+
+  /**
+   * @return true if the URI contains suspicious patterns that may suggest it intends to
+   *  mislead the user about its true nature. At the moment this looks for the presence
+   *  of user/password syntax in the host/authority portion of a URI which may be used
+   *  in attempts to make the URI's host appear to be other than it is. Example:
+   *  http://yourbank.com@phisher.com  This URI connects to phisher.com but may appear
+   *  to connect to yourbank.com at first glance.
+   */
+  static boolean isPossiblyMaliciousURI(String uri) {
+    return !ALLOWED_URI_CHARS_PATTERN.matcher(uri).matches() || containsUserInHost(uri);
+  }
+
+  /**
+   * Linear equivalent of finding {@code :/*([^/@]+)@[^/]+} anywhere in the URI, i.e. user/password
+   * syntax in the authority. A regex with {@link java.util.regex.Matcher#find()} backtracks
+   * quadratically here because ':' is itself a member of the userinfo class {@code [^/@]}, so a
+   * scheme followed by a long run of ':' restarts the greedy scan at every colon. This scans from
+   * each '@' instead, examining each character a constant number of times.
+   */
+  private static boolean containsUserInHost(String uri) {
+    int length = uri.length();
+    for (int at = uri.indexOf('@'); at >= 0; at = uri.indexOf('@', at + 1)) {
+      // Host part "[^/]+": at least one non-'/' character must follow '@'.
+      if (at + 1 >= length || uri.charAt(at + 1) == '/') {
+        continue;
+      }
+      // Userinfo "[^/@]+" ends just before '@'. A ':' inside the run (with a character after it)
+      // can serve as the scheme colon.
+      boolean schemeColon = false;
+      int i = at - 1;
+      while (i >= 0 && uri.charAt(i) != '/' && uri.charAt(i) != '@') {
+        if (uri.charAt(i) == ':' && i <= at - 2) {
+          schemeColon = true;
+        }
+        i--;
+      }
+      if (i + 1 == at) {
+        // No userinfo character immediately before '@'.
+        continue;
+      }
+      if (schemeColon) {
+        return true;
+      }
+      // Otherwise the scheme colon may sit before the run, separated by "/*".
+      while (i >= 0 && uri.charAt(i) == '/') {
+        i--;
+      }
+      if (i >= 0 && uri.charAt(i) == ':') {
+        return true;
+      }
+    }
+    return false;
   }
 
   static boolean isBasicallyValidURI(String uri) {
@@ -52,12 +110,12 @@ public final class URIResultParser extends ResultParser {
       // Quick hack check for a common case
       return false;
     }
-    Matcher m = URL_WITH_PROTOCOL_PATTERN.matcher(uri);
-    if (m.find() && m.start() == 0) { // match at start only
+    // Anchor at the start. find() rescans from every position, which is quadratic on long
+    // input that has no match at the start; lookingAt() matches only a prefix.
+    if (URL_WITH_PROTOCOL_PATTERN.matcher(uri).lookingAt()) {
       return true;
     }
-    m = URL_WITHOUT_PROTOCOL_PATTERN.matcher(uri);
-    return m.find() && m.start() == 0;
+    return URL_WITHOUT_PROTOCOL_PATTERN.matcher(uri).lookingAt();
   }
 
 }
