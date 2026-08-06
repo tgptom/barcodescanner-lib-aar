@@ -16,15 +16,7 @@
 
 package com.google.zxing.client.android.result;
 
-import android.app.Activity;
-import android.content.Context;
-import android.net.wifi.WifiManager;
-import android.os.AsyncTask;
-import android.util.Log;
-import android.widget.Toast;
-
 import com.google.zxing.client.android.CaptureActivity;
-import com.google.zxing.client.android.wifi.WifiConfigManager;
 import com.google.zxing.client.result.ParsedResult;
 import com.google.zxing.client.result.WifiParsedResult;
 
@@ -38,19 +30,13 @@ import barcodescanner.xservices.nl.barcodescanner.R;
  */
 public final class WifiResultHandler extends ResultHandler {
 
-  private static final String TAG = WifiResultHandler.class.getSimpleName();
-
-  private final CaptureActivity parent;
-
   public WifiResultHandler(CaptureActivity activity, ParsedResult result) {
     super(activity, result);
-    parent = activity;
   }
 
   @Override
   public int getButtonCount() {
-    // We just need one button, and that is to configure the wireless.  This could change in the future.
-    return 1;
+    return 0;
   }
 
   @Override
@@ -60,23 +46,6 @@ public final class WifiResultHandler extends ResultHandler {
 
   @Override
   public void handleButtonPress(int index) {
-    if (index == 0) {
-      WifiParsedResult wifiResult = (WifiParsedResult) getResult();
-      WifiManager wifiManager = (WifiManager) getActivity().getSystemService(Context.WIFI_SERVICE);
-      if (wifiManager == null) {
-        Log.w(TAG, "No WifiManager available from device");
-        return;
-      }
-      final Activity activity = getActivity();
-      activity.runOnUiThread(new Runnable() {
-        @Override
-        public void run() {
-          Toast.makeText(activity.getApplicationContext(), R.string.wifi_changing_network, Toast.LENGTH_SHORT).show();
-        }
-      });
-      new WifiConfigManager(wifiManager).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, wifiResult);
-      parent.restartPreviewAfterDelay(0L);
-    }
   }
 
   // Display the name of the network and the network type to the user.
